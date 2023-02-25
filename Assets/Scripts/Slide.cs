@@ -20,6 +20,7 @@ public class Slide : MonoBehaviour
     private ContactFilter2D _contactFilter;
     private RaycastHit2D[] _hitBuffer = new RaycastHit2D[16];
     private List<RaycastHit2D> _hitBufferList = new List<RaycastHit2D>(16);
+    private bool _isJumped;
     private const float MinMoveDistance = 0.001f;
     private const float ShellRadius = 0.01f;
 
@@ -39,38 +40,40 @@ public class Slide : MonoBehaviour
 
     private void Update()
     {   
-        Vector2 alongSurface = Vector2.Perpendicular(_groundNormal);
-        _targetVelocity = Vector2.zero;
-
-        float angel = Vector2.Angle(alongSurface, transform.up);
-        print("Current angle to surface: " + angel);
-
-        if (angel != 90)
-            _targetVelocity = alongSurface * -_dynamicSpeed.Evaluate(Time.deltaTime);
-
-        if (Input.GetMouseButtonDown(0) && _grounded)
+        if (Input.GetMouseButtonDown(0))
         {
-            _velocity += _groundNormal * _jumpForce;
-            _grounded = false;
+            _isJumped = true;
         }
     }
 
     private void FixedUpdate()
     {
-        _velocity += _gravityModifier * Physics2D.gravity * Time.deltaTime;
-        _velocity.x = _targetVelocity.x;
+        SetVelocity();
 
         _grounded = false;
 
         Vector2 deltaPosition = _velocity * Time.deltaTime;
-        Vector2 moveAlongGround = new Vector2(_groundNormal.y, -_groundNormal.x);
-        Vector2 move = moveAlongGround * deltaPosition.x;
+        Vector2 move = GetMovementSide(deltaPosition);
 
         Movement(move, false);
 
         move = Vector2.up * deltaPosition.y;
 
         Movement(move, true);
+    }
+
+    private void SetVelocity()
+    {
+        _targetVelocity = _groundNormal * _dynamicSpeed.Evaluate(Time.deltaTime);
+
+        _velocity += _gravityModifier * Physics2D.gravity * Time.deltaTime;
+        _velocity.x = _targetVelocity.x;
+    }
+
+    private Vector2 GetMovementSide(Vector2 deltaPosition)
+    {
+        Vector2 moveAlongGround = new Vector2(_groundNormal.y, -_groundNormal.x);
+        return moveAlongGround * deltaPosition.x;
     }
 
     private void Movement(Vector2 move, bool yMovement)
@@ -113,5 +116,15 @@ public class Slide : MonoBehaviour
         }
 
         _rigidBody2D.position = _rigidBody2D.position + move.normalized * distance;
+    }
+
+    private void Jump()
+    {
+        if (_isJumped && _grounded)
+        {
+            _velocity = _groundNormal * _jumpForce;
+            _grounded = false;
+            _isJumped = false;
+        }
     }
 }
